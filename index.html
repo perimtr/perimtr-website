@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="x-ua-compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="author" content="Perimtr, LLC" />
+  <meta name="description" content="Perimtr™ — privacy-first concierge security for households and principals." />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;600;700&family=Roboto:wght@300;400;500;700&family=Playfair+Display:wght@400;700&display=swap"
+    rel="stylesheet" />
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+  <!-- Consolidated site styles -->
+  <link rel="stylesheet" href="/src/styles/site.css" />
+  <link rel="stylesheet" href="/src/styles/font-icons.css">
+  <link rel="stylesheet" href="/src/styles/et-line.css">
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@4/animate.min.css">
+
+  <title>Perimtr™ | Private Communications & Personal Tech</title>
+
+</head>
+
+<body class="stretched">
+  <div id="root"></div>
+  <div id="gotoTop" class="uil uil-angle-up" aria-label="Back to top"></div>
+
+  <!-- Canvas vendor/plugins and theme logic -->
+  <script src="/js/plugins.min.js" defer></script>
+  <script src="/js/functions.bundle.js" defer></script>
+  <script>
+    (function () {
+      function smoothTo(target, offset) {
+        var el = typeof target === 'string' ? document.querySelector(target) : target;
+        if (!el) return;
+        var rect = el.getBoundingClientRect();
+        var top = rect.top + (window.pageYOffset || document.documentElement.scrollTop) - (offset || 0);
+        window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+      }
+
+      function bindScrollto() {
+        document.querySelectorAll('[data-scrollto]').forEach(function (a) {
+          if (a.__pmBound) return;
+          a.__pmBound = true;
+          a.addEventListener('click', function (e) {
+            e.preventDefault();
+            var sel = a.getAttribute('data-scrollto') || a.getAttribute('href');
+            var off = parseInt(a.getAttribute('data-offset') || '0', 10);
+            smoothTo(sel, isNaN(off) ? 0 : off);
+          });
+        });
+      }
+
+      // Initial bind + rebinding hook for SPA rerenders
+      bindScrollto();
+      document.addEventListener('canvas:reinit', bindScrollto);
+      window.addEventListener('cnvsReInit', bindScrollto);
+    })();
+  </script>
+  <!-- React app -->
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+
+</html>

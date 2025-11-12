@@ -1,0 +1,82 @@
+name: Deploy on tag
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  id-token: write   # OIDC
+  contents: read
+
+env:
+  S3_BUCKET: perimtr-www
+  CF_DISTRIBUTION_ID: E3FQOBHQ2PCP6F
+  HTML_CACHE_CONTROL: "no-cache, no-store, must-revalidate"
+  ASSETS_CACHE_CONTROL: "public, max-age=31536000, immutable"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install deps (locked)
+        run: npm ci --ignore-scripts
+
+      - name: Build
+        run: npm run build
+        # ensure your build outputs to ./dist
+
+      # Optional: ensure AWS CLI present (usually already installed)
+      - name: Ensure AWS CLI
+        run: aws --version
+      
+      - name: Debug Github ref/repo
+        run: |
+          echo "repository=${{ github.repository }}"
+          echo "ref=${{ github.ref }}"
+      
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::889588503276:role/GitHubActionsS3Deploy
+          aws-region: us-east-1
+
+      # If CloudFront uses OAC (recommended), DO NOT set --acl public-read
+
+      - name: Sync assets with long cache (exclude HTML)
+        run: |
+          test -d dist || { echo "dist/ not found"; exit 1; }
+          aws s3 sync ./dist s3://"$S3_BUCKET"/ \
+            --delete \
+            --exclude "index.html" \
+            --cache-control "$ASSETS_CACHE_CONTROL"
+
+      - name: Upload index.html with no-cache
+        run: |
+          aws s3 cp ./dist/index.html s3://"$S3_BUCKET"/index.html \
+            --cache-control "$HTML_CACHE_CONTROL" \
+            --content-type "text/html; charset=utf-8"
+
+      # If your bundler outputs content-hashed assets, keep this minimal invalidation:
+      - name: Invalidate CloudFront (root + index only)
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id "$CF_DISTRIBUTION_ID" \
+            --paths "/" "/index.html"
+
+      # If assets are NOT hashed yet, use this instead of the step above:
+      # - name: Invalidate CloudFront (full)
+      #   run: |
+      #     aws cloudfront create-invalidation \
+      #       --distribution-id "$CF_DISTRIBUTION_ID" \
+      #       --paths "/*"

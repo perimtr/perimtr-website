@@ -1,0 +1,103 @@
+/* Pull in your global variables/utility classes first */
+@import "./site.css";
+
+:root {
+    --perimtr-body-font: 'Roboto', sans-serif;
+    --perimtr-primary-font: 'Source Sans Pro', sans-serif;
+    --perimtr-header-height: 70px;
+    --perimtr-body-bg: #f8fafc;
+    --perimtr-heading-color: #0f172a;
+    --perimtr-text-color: #475569;
+    --perimtr-themecolor: #4A87B9;
+}
+/* Section wrapper */
+.contact-section {
+  background: var(--perimtr-body-bg, #f8fafc);
+  padding: clamp(40px, 6vw, 80px) 0;
+}
+
+/* Centered shell aligned with your grid width */
+.contact-shell {
+  width: min(1100px, 92vw);
+  margin-inline: auto;
+}
+
+/* Header */
+.contact-header {
+  text-align: center;
+  margin-bottom: clamp(24px, 4vw, 40px);
+}
+.contact-title {
+  font-family: var(--perimtr-font-body, inherit);
+  font-size: clamp(28px, 4vw, 40px);
+  letter-spacing: -0.02em;
+  margin: 0 0 10px 0;
+  color: var(--perimtr-heading-color, #0f172a);
+}
+.contact-subtitle {
+  margin: 0 auto;
+  max-width: 900px;
+  color: var(--perimtr-text-color, #475569);
+  font-weight: 300;
+  line-height: 1.5;
+}
+
+/* Card surface */
+.contact-card {
+  width: 100%;
+  background: transparent;
+}
+
+.contact-form {
+  display: grid;
+  gap: 18px;
+}
+
+.contact-form .field {
+  width: 100%;
+}
+
+.contact-form .form-control {
+  width: 100%;
+  padding: 1rem 0;
+  border: none;
+  border-bottom: 1px solid #d5dfe9;
+  border-radius: 0;
+  background: transparent;
+  font-size: 1.25rem;
+  color: var(--perimtr-heading-color);
+}
+
+.contact-form .form-control:focus {
+  border-bottom-color: var(--perimtr-themecolor);
+  outline: none;
+  box-shadow: none;
+}
+
+.contact-form textarea.form-control {
+  min-height: 140px;
+}
+
+.actions {
+  text-align: left;
+  margin-top: 12px;
+}
+
+.actions .button {
+  margin-top: 0;
+}
+
+.actions .note {
+  display: block;
+  margin-top: 12px;
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+
+/* a11y helpers */
+.visually-hidden {
+  position: absolute !important;
+  height: 1px; width: 1px;
+  overflow: hidden; clip: rect(1px, 1px, 1px, 1px);
+  white-space: nowrap;
+}
