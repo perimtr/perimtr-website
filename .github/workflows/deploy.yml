@@ -1,82 +1,103 @@
-name: Deploy on tag
+name: Deploy to S3 + CloudFront
 
 on:
   push:
-    tags:
-      - "v*.*.*"
+    branches: [ "main" ]
+  workflow_dispatch:
 
 permissions:
-  id-token: write   # OIDC
+  id-token: write     # required for GitHub → AWS OIDC
   contents: read
 
 env:
+  AWS_REGION: us-east-1
   S3_BUCKET: perimtr-www
-  CF_DISTRIBUTION_ID: E3FQOBHQ2PCP6F
-  HTML_CACHE_CONTROL: "no-cache, no-store, must-revalidate"
-  ASSETS_CACHE_CONTROL: "public, max-age=31536000, immutable"
+  CLOUDFRONT_DISTRIBUTION_ID: E2XS349JN2OS96
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Use Node 20
+      # ── If you have a build step (Next.js, Vite, etc), uncomment below ─────────
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-
-      - name: Install deps (locked)
-        run: npm ci --ignore-scripts
-
-      - name: Build
+      - name: Install deps
+        run: npm ci
+      - name: Build site
         run: npm run build
-        # ensure your build outputs to ./dist
+      #
+      # 🔁 Set this to your build output directory (e.g., dist, out, build)
+      - name: Set build dir
+        run: echo "BUILD_DIR=dist" >> $GITHUB_ENV
+      # ────────────────────────────────────────────────────────────────────────────
 
-      # Optional: ensure AWS CLI present (usually already installed)
-      - name: Ensure AWS CLI
-        run: aws --version
-      
-      - name: Debug Github ref/repo
-        run: |
-          echo "repository=${{ github.repository }}"
-          echo "ref=${{ github.ref }}"
-      
+      # If no build step, deploy repo root as-is
+      - name: Set build dir (repo root)
+        run: echo "BUILD_DIR=." >> $GITHUB_ENV
+
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::889588503276:role/GitHubActionsS3Deploy
-          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::889588503276:role/GitHubActionsDeploy-perimtr-website
+          aws-region: ${{ env.AWS_REGION }}
 
-      # If CloudFront uses OAC (recommended), DO NOT set --acl public-read
+      - name: Install AWS CLI
+        uses: unfor19/install-aws-cli-action@v1
 
-      - name: Sync assets with long cache (exclude HTML)
+      - name: Show AWS caller identity (sanity check)
+        run: aws sts get-caller-identity
+
+      # Long-cache immutable assets (expects hashed filenames for js/css/etc.)
+      - name: Upload versioned assets (cache 1 year, immutable)
         run: |
-          test -d dist || { echo "dist/ not found"; exit 1; }
-          aws s3 sync ./dist s3://"$S3_BUCKET"/ \
+          set -euo pipefail
+          aws s3 sync "$BUILD_DIR" "s3://${S3_BUCKET}/" \
             --delete \
-            --exclude "index.html" \
-            --cache-control "$ASSETS_CACHE_CONTROL"
+            --exclude "*" \
+            --include "*.js" --include "*.css" --include "*.map" \
+            --include "*.png" --include "*.jpg" --include "*.jpeg" --include "*.gif" --include "*.webp" \
+            --include "*.svg" --include "*.ico" \
+            --include "*.woff" --include "*.woff2" --include "*.ttf" \
+            --cache-control "public, max-age=31536000, immutable"
 
-      - name: Upload index.html with no-cache
+      # Medium-cache for other static files you update occasionally
+      - name: Upload other static files (cache 1 hour)
         run: |
-          aws s3 cp ./dist/index.html s3://"$S3_BUCKET"/index.html \
-            --cache-control "$HTML_CACHE_CONTROL" \
-            --content-type "text/html; charset=utf-8"
+          set -euo pipefail
+          aws s3 sync "$BUILD_DIR" "s3://${S3_BUCKET}/" \
+            --delete \
+            --exclude "*.html" \
+            --exclude "*.json" \
+            --exclude "*.txt" \
+            --exclude "*.xml" \
+            --exclude "*.js" --exclude "*.css" --exclude "*.map" \
+            --exclude "*.png" --exclude "*.jpg" --exclude "*.jpeg" --exclude "*.gif" --exclude "*.webp" \
+            --exclude "*.svg" --exclude "*.ico" \
+            --exclude "*.woff" --exclude "*.woff2" --exclude "*.ttf" \
+            --cache-control "public, max-age=3600"
 
-      # If your bundler outputs content-hashed assets, keep this minimal invalidation:
-      - name: Invalidate CloudFront (root + index only)
+      # HTML must be no-cache so content updates are instant
+      - name: Upload HTML (no-cache)
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s globstar nullglob
+          for file in "$BUILD_DIR"/**/*.html; do
+            key="${file#${BUILD_DIR}/}"
+            aws s3 cp "$file" "s3://${S3_BUCKET}/$key" \
+              --content-type "text/html; charset=utf-8" \
+              --cache-control "no-store, no-cache, must-revalidate, max-age=0"
+          done
+
+      - name: Invalidate CloudFront
         run: |
           aws cloudfront create-invalidation \
-            --distribution-id "$CF_DISTRIBUTION_ID" \
-            --paths "/" "/index.html"
-
-      # If assets are NOT hashed yet, use this instead of the step above:
-      # - name: Invalidate CloudFront (full)
-      #   run: |
-      #     aws cloudfront create-invalidation \
-      #       --distribution-id "$CF_DISTRIBUTION_ID" \
-      #       --paths "/*"
+            --distribution-id "${CLOUDFRONT_DISTRIBUTION_ID}" \
+            --paths "/*"
