@@ -798,7 +798,7 @@ ol {
   display: inline-block;
   min-width: 6ch;
   font-family: var(--perimtr-font-heading, "Playfair Display", serif);
-  font-size: clamp(3rem, 12vw, 166px);
+  font-size: clamp(2.25rem, 9vw, 120px);
   letter-spacing: -0.02em;
   font-weight: 600;
   color: var(--perimtr-heading-color);
