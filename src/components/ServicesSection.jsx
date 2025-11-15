@@ -29,7 +29,7 @@ export default function ServicesSection() {
           <h2 className="mb-0 fw-light ls-1">
             Interested in Our Services? Get a{" "}
             <a
-              href="#"
+              href="#contact-form"
               data-scrollto="#contact-form"
               data-offset="140"
               data-easing="easeInOutExpo"

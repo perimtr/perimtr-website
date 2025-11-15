@@ -56,17 +56,6 @@ export default function Footer() {
               ))}
             </nav>
           </section>
-
-          <section className="footer-section">
-            <h4 className="footer-heading">Contact</h4>
-            <p className="footer-contact">
-              <a href="mailto:info@perimtr.io">info@perimtr.io</a>
-              <br />
-              <a href="tel:+19418995700">+1 (941) 899-5700</a>
-              <br />
-              Sarasota &amp; Tampa Bay
-            </p>
-          </section>
         </div>
       </div>
 
